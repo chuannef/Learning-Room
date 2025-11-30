@@ -48,8 +48,12 @@ app.use("/api/groups", groupRoutes);
 
 // Serve frontend in production
 console.log("NODE_ENV:", process.env.NODE_ENV);
+console.log("__dirname:", __dirname);
+
 if (process.env.NODE_ENV === "production") {
-  const frontendPath = path.join(__dirname, "../../frontend/dist");
+  // __dirname is /opt/render/project/src/backend/src
+  // frontend/dist is at /opt/render/project/src/frontend/dist
+  const frontendPath = path.join(__dirname, "../../../frontend/dist");
   console.log("Serving frontend from:", frontendPath);
   
   app.use(express.static(frontendPath));
