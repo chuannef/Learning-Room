@@ -3,6 +3,7 @@ import "dotenv/config";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import path from "path";
+import { fileURLToPath } from "url";
 
 import authRoutes from "./routes/auth.route.js";
 import userRoutes from "./routes/user.route.js";
@@ -15,7 +16,9 @@ const app = express();
 // Use Render's PORT or fallback to 5001 for local dev
 const PORT = process.env.PORT || 5001;
 
-const __dirname = path.resolve();
+// Get __dirname in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // CORS configuration
 const allowedOrigins = [
@@ -51,7 +54,7 @@ console.log("NODE_ENV:", process.env.NODE_ENV);
 console.log("__dirname:", __dirname);
 
 if (process.env.NODE_ENV === "production") {
-  // __dirname is /opt/render/project/src/backend
+  // __dirname is /opt/render/project/src/backend/src
   // frontend/dist is at /opt/render/project/src/frontend/dist
   const frontendPath = path.join(__dirname, "../../frontend/dist");
   console.log("Serving frontend from:", frontendPath);
