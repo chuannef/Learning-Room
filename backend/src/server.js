@@ -23,18 +23,19 @@ const __dirname = path.dirname(__filename);
 // CORS configuration
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://chatapp-5a7v.onrender.com",
+  "https://chatapp-ab.onrender.com",
   process.env.FRONTEND_URL
 ].filter(Boolean);
 
 app.use(
   cors({
     origin: function (origin, callback) {
-      // Allow requests with no origin (mobile apps, curl, etc.)
+      // Allow requests with no origin (same origin requests, mobile apps, curl, etc.)
       if (!origin) return callback(null, true);
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
+      console.log("CORS blocked origin:", origin);
       return callback(new Error("Not allowed by CORS"));
     },
     credentials: true, // allow frontend to send cookies
