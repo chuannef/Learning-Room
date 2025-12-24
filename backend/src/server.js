@@ -5,6 +5,7 @@ import cors from "cors";
 import http from "http";
 import path from "path";
 import { fileURLToPath } from "url";
+import fs from "fs";
 
 import authRoutes from "./routes/auth.route.js";
 import userRoutes from "./routes/user.route.js";
@@ -69,17 +70,24 @@ app.use("/api/messages", messageRoutes);
 console.log("NODE_ENV:", process.env.NODE_ENV);
 console.log("__dirname:", __dirname);
 
-if (process.env.NODE_ENV === "production") {
-  // __dirname is /opt/render/project/src/backend/src
-  // frontend/dist is at /opt/render/project/src/frontend/dist
-  const frontendPath = path.join(__dirname, "../../frontend/dist");
+// __dirname is <repo>/backend/src
+// frontend/dist is at <repo>/frontend/dist
+const frontendPath = path.join(__dirname, "../../frontend/dist");
+const frontendIndexPath = path.join(frontendPath, "index.html");
+
+// Render might not set NODE_ENV=production; also avoid relying on a committed .env.
+// If the frontend build exists, serve it (SPA + static assets).
+if (fs.existsSync(frontendIndexPath)) {
   console.log("Serving frontend from:", frontendPath);
-  
+
   app.use(express.static(frontendPath));
 
-  app.get("*", (req, res) => {
-    res.sendFile(path.join(frontendPath, "index.html"));
+  // SPA fallback: do not intercept API routes or Socket.IO
+  app.get(/^\/(?!api(?:\/|$)|socket\.io(?:\/|$)).*/, (req, res) => {
+    res.sendFile(frontendIndexPath);
   });
+} else {
+  console.log("Frontend build not found at:", frontendIndexPath);
 }
 
 const server = http.createServer(app);
