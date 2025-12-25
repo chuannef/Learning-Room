@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import useAuthUser from "../hooks/useAuthUser";
 import { useQuery } from "@tanstack/react-query";
@@ -10,10 +10,10 @@ import {
   StreamVideoClient,
   StreamCall,
   CallControls,
-  SpeakerLayout,
   StreamTheme,
   CallingState,
   useCallStateHooks,
+  ParticipantView,
 } from "@stream-io/video-react-sdk";
 
 import "@stream-io/video-react-sdk/dist/css/styles.css";
@@ -246,13 +246,160 @@ const CallContent = () => {
 
   const navigate = useNavigate();
 
+  useEffect(() => {
+    // Ensure the call UI never causes page scrolling.
+    const prevHtmlOverflow = document.documentElement.style.overflow;
+    const prevBodyOverflow = document.body.style.overflow;
+    const prevBodyMargin = document.body.style.margin;
+
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    document.body.style.margin = "0";
+
+    return () => {
+      document.documentElement.style.overflow = prevHtmlOverflow;
+      document.body.style.overflow = prevBodyOverflow;
+      document.body.style.margin = prevBodyMargin;
+    };
+  }, []);
+
   if (callingState === CallingState.LEFT) return navigate("/");
 
   return (
     <StreamTheme>
-      <SpeakerLayout />
-      <CallControls />
+      <div className="relative w-screen h-screen overflow-hidden">
+        <div className="absolute inset-0">
+          <ParticipantsPerUserLayout />
+        </div>
+        <div className="absolute left-0 right-0 bottom-0">
+          <CallControls />
+        </div>
+      </div>
     </StreamTheme>
+  );
+};
+
+const ParticipantsPerUserLayout = () => {
+  const { useParticipants } = useCallStateHooks();
+  const participants = useParticipants();
+  const [viewport, setViewport] = useState(() => {
+    if (typeof window === "undefined") return { w: 1280, h: 720 };
+    return { w: window.innerWidth || 1280, h: window.innerHeight || 720 };
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onResize = () => {
+      setViewport({ w: window.innerWidth || 1280, h: window.innerHeight || 720 });
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  const tiles = useMemo(() => {
+    // Ensure 1 participant per userId (avoid multiple camera tiles per user).
+    const byUserId = new Map();
+    for (const participant of participants || []) {
+      const userId = String(participant?.userId || "");
+      if (!userId) continue;
+
+      const existing = byUserId.get(userId);
+      if (!existing) {
+        byUserId.set(userId, participant);
+        continue;
+      }
+
+      // Prefer local participant entry if duplicates exist.
+      if (!existing.isLocalParticipant && participant.isLocalParticipant) {
+        byUserId.set(userId, participant);
+      }
+    }
+
+    const uniqueParticipants = Array.from(byUserId.values());
+    // Stable-ish ordering: local first, then by name/userId.
+    uniqueParticipants.sort((a, b) => {
+      if (a.isLocalParticipant && !b.isLocalParticipant) return -1;
+      if (!a.isLocalParticipant && b.isLocalParticipant) return 1;
+      const an = String(a.name || a.userId || "");
+      const bn = String(b.name || b.userId || "");
+      return an.localeCompare(bn);
+    });
+
+    return uniqueParticipants.flatMap((p) => {
+      const userId = String(p.userId);
+      const baseKey = `${userId}:${p.sessionId || ""}`;
+
+      const result = [
+        {
+          key: `${baseKey}:video`,
+          participant: p,
+          trackType: "videoTrack",
+        },
+      ];
+
+      // Add a second tile only when this user is screen sharing.
+      if (p.screenShareStream) {
+        result.push({
+          key: `${baseKey}:screen`,
+          participant: p,
+          trackType: "screenShareTrack",
+        });
+      }
+
+      return result;
+    });
+  }, [participants]);
+
+  const grid = useMemo(() => {
+    const count = tiles.length;
+    if (count <= 0) return { cols: 1, rows: 1 };
+
+    // Fit-all layout (no scroll): choose cols/rows based on viewport aspect ratio.
+    const aspect = Math.max(0.5, Math.min(2.5, viewport.w / Math.max(1, viewport.h)));
+    let cols = Math.ceil(Math.sqrt(count * aspect));
+    cols = Math.max(1, Math.min(cols, count));
+    const rows = Math.max(1, Math.ceil(count / cols));
+
+    return { cols, rows };
+  }, [tiles.length, viewport.w, viewport.h]);
+
+  const density = useMemo(() => {
+    const count = tiles.length;
+    // Keep everything on screen; reduce whitespace as tiles increase.
+    if (count <= 2) return { padding: "p-2", gap: "gap-2" };
+    if (count <= 4) return { padding: "p-1", gap: "gap-1" };
+    return { padding: "p-1", gap: "gap-0.5" };
+  }, [tiles.length]);
+
+  return (
+    <div className={`w-full h-full ${density.padding} overflow-hidden`}>
+      <div
+        className={`h-full w-full grid ${density.gap} overflow-hidden`}
+        style={{
+          gridTemplateColumns: `repeat(${grid.cols}, minmax(0, 1fr))`,
+          gridTemplateRows: `repeat(${grid.rows}, minmax(0, 1fr))`,
+        }}
+      >
+        {tiles.map((t) => (
+          <div key={t.key} className="min-w-0 min-h-0">
+            <div
+              className="min-w-0 min-h-0"
+              style={
+                t.trackType === "videoTrack"
+                  ? {
+                      width: "calc(100% - 15px)",
+                      height: "calc(100% - 15px)",
+                      margin: "auto",
+                    }
+                  : undefined
+              }
+            >
+              <ParticipantView participant={t.participant} trackType={t.trackType} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 };
 
