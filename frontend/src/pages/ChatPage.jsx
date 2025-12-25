@@ -140,23 +140,11 @@ const ChatPage = () => {
     if (!roomId) return;
 
     const callUrl = `${window.location.origin}/call/${roomId}`;
-    const socket = getSocket();
 
-    socket.emit(
-      "message:send",
-      {
-        kind: "dm",
-        otherUserId: targetUserId,
-        text: `I've started a video call. Join me here:\n${callUrl}`,
-      },
-      (ack) => {
-        if (!ack?.ok) {
-          toast.error(ack?.message || "Failed to send call link");
-          return;
-        }
-        toast.success("Video call link sent successfully!");
-      }
-    );
+    // Let the caller join immediately in a new tab.
+    const win = window.open(callUrl, "_blank");
+    if (win) win.opener = null;
+    else toast.error("Popup blocked. Please allow popups to join the call.");
   };
 
   const handleSend = (e) => {

@@ -2,24 +2,55 @@ import { axiosInstance } from "./axios";
 
 export const signup = async (signupData) => {
   const response = await axiosInstance.post("/auth/signup", signupData);
+  try {
+    if (response?.data?.user) {
+      localStorage.setItem("authUser", JSON.stringify(response.data.user));
+    }
+  } catch {
+    // ignore storage errors
+  }
   return response.data;
 };
 
 export const login = async (loginData) => {
   const response = await axiosInstance.post("/auth/login", loginData);
+  try {
+    if (response?.data?.user) {
+      localStorage.setItem("authUser", JSON.stringify(response.data.user));
+    }
+  } catch {
+    // ignore storage errors
+  }
   return response.data;
 };
 export const logout = async () => {
   const response = await axiosInstance.post("/auth/logout");
+  try {
+    localStorage.removeItem("authUser");
+  } catch {
+    // ignore storage errors
+  }
   return response.data;
 };
 
 export const getAuthUser = async () => {
   try {
     const res = await axiosInstance.get("/auth/me");
+    try {
+      if (res?.data?.user) {
+        localStorage.setItem("authUser", JSON.stringify(res.data.user));
+      }
+    } catch {
+      // ignore storage errors
+    }
     return res.data;
   } catch (error) {
     console.log("Error in getAuthUser:", error);
+    try {
+      localStorage.removeItem("authUser");
+    } catch {
+      // ignore storage errors
+    }
     return null;
   }
 };
@@ -60,7 +91,7 @@ export async function acceptFriendRequest(requestId) {
 }
 
 export async function getStreamToken() {
-  const response = await axiosInstance.get("/chat/token");
+  const response = await axiosInstance.get("/chat/token", { timeout: 15000 });
   return response.data;
 }
 

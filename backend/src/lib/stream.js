@@ -16,6 +16,14 @@ export const upsertStreamUser = async (userData) => {
       throw new Error("Stream API key/secret not configured");
     }
 
+    // Stream user custom data must be small; base64 avatars can exceed limits.
+    if (typeof userData?.image === "string") {
+      const img = userData.image;
+      if (img.startsWith("data:image/") || img.length > 4000) {
+        userData.image = "";
+      }
+    }
+
     await streamClient.upsertUsers([userData]);
     return userData;
   } catch (error) {

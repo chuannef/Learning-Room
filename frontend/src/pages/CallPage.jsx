@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import useAuthUser from "../hooks/useAuthUser";
 import { useQuery } from "@tanstack/react-query";
@@ -19,8 +19,6 @@ import {
 import "@stream-io/video-react-sdk/dist/css/styles.css";
 import toast from "react-hot-toast";
 import PageLoader from "../components/PageLoader";
-
-const STREAM_API_KEY = import.meta.env.VITE_STREAM_API_KEY;
 
 function normalizeCallId(raw) {
   if (!raw) return "";
@@ -47,6 +45,7 @@ const CallPage = () => {
   const [call, setCall] = useState(null);
   const [isConnecting, setIsConnecting] = useState(true);
   const [callError, setCallError] = useState("");
+  const initKeyRef = useRef("");
 
   const { authUser, isLoading } = useAuthUser();
 
@@ -112,8 +111,9 @@ const CallPage = () => {
         return;
       }
 
-      if (!STREAM_API_KEY) {
-        setCallError("Missing Stream API key (VITE_STREAM_API_KEY)");
+      const apiKey = String(tokenData?.apiKey || "").trim();
+      if (!apiKey) {
+        setCallError("Stream API key missing from server response");
         setIsConnecting(false);
         return;
       }
@@ -123,24 +123,47 @@ const CallPage = () => {
         return;
       }
 
+      const initKey = `${authUser._id}:${normalizedCallId}:${tokenData.token}`;
+      if (initKeyRef.current === initKey) return;
+      initKeyRef.current = initKey;
+
+      let videoClient;
+      let callInstance;
+
       try {
         console.log("Initializing Stream video client...");
 
         const user = {
           id: authUser._id,
           name: authUser.fullName,
-          image: getUserAvatarSrc(authUser),
         };
 
-        const videoClient = new StreamVideoClient({
-          apiKey: STREAM_API_KEY,
-          user,
-          token: tokenData.token,
+        const avatar = getUserAvatarSrc(authUser);
+        if (typeof avatar === "string" && avatar && !avatar.startsWith("data:image/") && avatar.length <= 4000) {
+          user.image = avatar;
+        }
+
+        // Explicit connect so we can fail fast & show the real error.
+        videoClient = new StreamVideoClient({
+          apiKey,
+          options: {
+            maxConnectUserRetries: 1,
+          },
         });
 
-        const callInstance = videoClient.call("default", normalizedCallId);
+        const connectTimeoutMs = 15000;
+        await Promise.race([
+          videoClient.connectUser(user, tokenData.token),
+          new Promise((_, reject) => setTimeout(() => reject(new Error("Connect timed out")), connectTimeoutMs)),
+        ]);
 
-        await callInstance.join({ create: true });
+        callInstance = videoClient.call("default", normalizedCallId);
+
+        const joinTimeoutMs = 25000;
+        await Promise.race([
+          callInstance.join({ create: true }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error("Join call timed out")), joinTimeoutMs)),
+        ]);
 
         console.log("Joined call successfully");
 
@@ -151,15 +174,52 @@ const CallPage = () => {
         const msg = error?.message || "Could not join the call. Please try again.";
         setCallError(msg);
         toast.error(msg);
+
+        try {
+          await callInstance?.leave?.();
+        } catch {
+          // ignore
+        }
+        try {
+          await videoClient?.disconnectUser?.();
+        } catch {
+          // ignore
+        }
       } finally {
         setIsConnecting(false);
       }
     };
 
     initCall();
-  }, [tokenData?.token, tokenLoading, tokenIsError, tokenError, authUser, normalizedCallId]);
+    return () => {
+      // Best-effort cleanup when navigating away.
+      try {
+        call?.leave?.();
+      } catch {
+        // ignore
+      }
+      try {
+        client?.disconnectUser?.();
+      } catch {
+        // ignore
+      }
+    };
+  }, [tokenData?.token, tokenData?.apiKey, tokenLoading, tokenIsError, tokenError, authUser, normalizedCallId]);
 
-  if (isLoading || isConnecting) return <PageLoader />;
+  // Token fetch can hang (cold start / network). Fail fast with a useful error.
+  useEffect(() => {
+    if (!authUser || !normalizedCallId) return;
+    if (!tokenLoading) return;
+
+    const t = setTimeout(() => {
+      setCallError("Loading call token timed out. Please refresh and try again.");
+      setIsConnecting(false);
+    }, 20000);
+
+    return () => clearTimeout(t);
+  }, [authUser, normalizedCallId, tokenLoading]);
+
+  if (isLoading || (isConnecting && !callError)) return <PageLoader />;
 
   return (
     <div className="h-screen flex flex-col items-center justify-center">
