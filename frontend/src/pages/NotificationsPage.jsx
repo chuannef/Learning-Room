@@ -10,6 +10,8 @@ const NotificationsPage = () => {
   const { data: friendRequests, isLoading } = useQuery({
     queryKey: ["friendRequests"],
     queryFn: getFriendRequests,
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const { mutate: acceptRequestMutation, isPending } = useMutation({

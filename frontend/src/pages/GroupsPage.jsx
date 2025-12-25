@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router";
 import toast from "react-hot-toast";
@@ -29,6 +29,17 @@ const GroupsPage = () => {
   const [activeTab, setActiveTab] = useState("my-groups");
   const queryClient = useQueryClient();
   const { authUser } = useAuthUser();
+
+  // Prefetch available groups so the tab count is correct even before opening the tab.
+  useEffect(() => {
+    if (!authUser?._id) return;
+
+    queryClient.prefetchQuery({
+      queryKey: ["availableGroups"],
+      queryFn: getAvailableGroups,
+      staleTime: 60 * 1000,
+    });
+  }, [authUser?._id, queryClient]);
 
   // Fetch my groups
   const { data: myGroups = [], isLoading: loadingMyGroups } = useQuery({
