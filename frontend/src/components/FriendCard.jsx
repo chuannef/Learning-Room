@@ -1,8 +1,23 @@
 import { Link } from "react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { LANGUAGE_TO_FLAG } from "../constants";
 import { getUserAvatarSrc } from "../lib/avatar";
+import { getDmMessages } from "../lib/api";
 
 const FriendCard = ({ friend }) => {
+  const queryClient = useQueryClient();
+
+  const prefetchDm = () => {
+    const targetId = friend?._id;
+    if (!targetId) return;
+
+    queryClient.prefetchQuery({
+      queryKey: ["dmMessages", targetId],
+      queryFn: () => getDmMessages(targetId),
+      staleTime: 30 * 1000,
+    });
+  };
+
   return (
     <div className="card bg-base-200 hover:shadow-md transition-shadow">
       <div className="card-body p-4">
@@ -31,7 +46,13 @@ const FriendCard = ({ friend }) => {
           </span>
         </div>
 
-        <Link to={`/chat/${friend?._id || ""}`} className="btn btn-outline w-full" aria-disabled={!friend?._id}>
+        <Link
+          to={`/chat/${friend?._id || ""}`}
+          className="btn btn-outline w-full"
+          aria-disabled={!friend?._id}
+          onMouseEnter={prefetchDm}
+          onFocus={prefetchDm}
+        >
           Message
         </Link>
       </div>

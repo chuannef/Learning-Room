@@ -20,7 +20,6 @@ const ChatPage = () => {
   const { id: targetUserId } = useParams();
   const navigate = useNavigate();
 
-  const [joining, setJoining] = useState(true);
   const [chatError, setChatError] = useState("");
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
@@ -58,7 +57,9 @@ const ChatPage = () => {
     queryKey: ["dmMessages", targetUserId],
     queryFn: () => getDmMessages(targetUserId),
     enabled: !!authUser && !!targetUserId,
-    staleTime: 0,
+    // Cache a bit so navigating in/out of chat is instant.
+    staleTime: 30 * 1000,
+    placeholderData: (prev) => prev,
     refetchOnWindowFocus: false,
   });
 
@@ -72,14 +73,12 @@ const ChatPage = () => {
     if (!authUser?._id || !targetUserId) return;
     if (historyIsError) {
       setChatError(historyError?.response?.data?.message || historyError?.message || "Failed to load messages");
-      setJoining(false);
       return;
     }
     if (historyLoading) return;
 
     const socket = getSocket();
     setChatError("");
-    setJoining(true);
 
     if (!socket.connected) {
       socket.connect();
@@ -117,11 +116,8 @@ const ChatPage = () => {
     socket.emit("dm:join", { otherUserId: targetUserId }, (ack) => {
       if (!ack?.ok) {
         setChatError(ack?.message || "Could not join chat");
-        setJoining(false);
         return;
       }
-
-      setJoining(false);
     });
 
     return () => {
@@ -259,7 +255,7 @@ const ChatPage = () => {
     setEditingText("");
   };
 
-  if (historyLoading || joining) return <ChatLoader />;
+  if (historyLoading) return <ChatLoader />;
 
   if (chatError) {
     return (

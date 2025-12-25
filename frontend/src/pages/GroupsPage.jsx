@@ -19,7 +19,10 @@ import {
   joinGroup, 
   leaveGroup, 
   deleteGroup,
-  getUserFriends 
+  getUserFriends,
+  getGroupById,
+  getGroupMessages,
+  getGroupAssignments,
 } from "../lib/api";
 import useAuthUser from "../hooks/useAuthUser";
 import { getUserAvatarSrc } from "../lib/avatar";
@@ -229,6 +232,21 @@ const GroupCard = ({
   isDeleting,
   isJoining 
 }) => {
+  const queryClient = useQueryClient();
+
+  const prefetchGroupRoom = () => {
+    const groupId = group?._id;
+    if (!groupId) return;
+
+    const opts = { staleTime: 60 * 1000 };
+
+    Promise.allSettled([
+      queryClient.prefetchQuery({ queryKey: ["group", groupId], queryFn: () => getGroupById(groupId), ...opts }),
+      queryClient.prefetchQuery({ queryKey: ["groupMessages", groupId], queryFn: () => getGroupMessages(groupId), ...opts }),
+      queryClient.prefetchQuery({ queryKey: ["groupAssignments", groupId], queryFn: () => getGroupAssignments(groupId), ...opts }),
+    ]);
+  };
+
   return (
     <div className="card bg-base-200 shadow-sm hover:shadow-md transition-shadow">
       <div className="card-body p-4">
@@ -282,7 +300,14 @@ const GroupCard = ({
         {/* Actions */}
         <div className="card-actions justify-end mt-4">
           {isMyGroup && (
-            <Link className="btn btn-primary btn-sm" to={`/groups/${group._id}`}>Open</Link>
+            <Link
+              className="btn btn-primary btn-sm"
+              to={`/groups/${group._id}`}
+              onMouseEnter={prefetchGroupRoom}
+              onFocus={prefetchGroupRoom}
+            >
+              Open
+            </Link>
           )}
           {isMyGroup ? (
             <>

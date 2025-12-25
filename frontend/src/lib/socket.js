@@ -33,3 +33,13 @@ export function getSocket() {
 
   return socketInstance;
 }
+
+export function disconnectSocket() {
+  if (!socketInstance) return;
+  try {
+    socketInstance.removeAllListeners();
+    socketInstance.disconnect();
+  } finally {
+    socketInstance = null;
+  }
+}

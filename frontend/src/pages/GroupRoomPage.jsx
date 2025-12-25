@@ -27,7 +27,6 @@ const GroupRoomPage = () => {
   const { authUser } = useAuthUser();
 
   const [activeTab, setActiveTab] = useState("chat");
-  const [chatLoading, setChatLoading] = useState(true);
   const [chatError, setChatError] = useState("");
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
@@ -48,6 +47,7 @@ const GroupRoomPage = () => {
     enabled: Boolean(groupId),
     staleTime: 60 * 1000,
     refetchOnWindowFocus: false,
+    retry: false,
   });
 
   const isAdmin = useMemo(() => {
@@ -62,9 +62,12 @@ const GroupRoomPage = () => {
   } = useQuery({
     queryKey: ["groupMessages", groupId],
     queryFn: () => getGroupMessages(groupId),
-    enabled: Boolean(groupId) && Boolean(group) && Boolean(authUser),
-    staleTime: 0,
+    enabled: Boolean(groupId) && Boolean(authUser) && activeTab === "chat",
+    // Cache so opening/returning to a group chat is fast.
+    staleTime: 30 * 1000,
+    placeholderData: (prev) => prev,
     refetchOnWindowFocus: false,
+    retry: false,
   });
 
   useEffect(() => {
@@ -168,19 +171,16 @@ const GroupRoomPage = () => {
   });
 
   useEffect(() => {
-    if (!authUser?._id || !groupId || !group) return;
+    if (!authUser?._id || !groupId) return;
     if (activeTab !== "chat") return;
 
     if (historyIsError) {
       setChatError(historyError?.response?.data?.message || historyError?.message || "Failed to load messages");
-      setChatLoading(false);
       return;
     }
-    if (historyLoading) return;
 
     const socket = getSocket();
     setChatError("");
-    setChatLoading(true);
 
     if (!socket.connected) {
       socket.connect();
@@ -188,7 +188,6 @@ const GroupRoomPage = () => {
 
     const onConnectError = () => {
       setChatError("Could not connect to group chat");
-      setChatLoading(false);
     };
 
     const onNewMessage = ({ roomId: incomingRoomId, message }) => {
@@ -217,10 +216,8 @@ const GroupRoomPage = () => {
     socket.emit("group:join", { groupId }, (ack) => {
       if (!ack?.ok) {
         setChatError(ack?.message || "Could not join group chat");
-        setChatLoading(false);
         return;
       }
-      setChatLoading(false);
     });
 
     return () => {
@@ -229,7 +226,7 @@ const GroupRoomPage = () => {
       socket.off("message:deleted", onDeletedMessage);
       socket.off("message:updated", onUpdatedMessage);
     };
-  }, [authUser?._id, groupId, group, activeTab, historyLoading, historyIsError, historyError]);
+  }, [authUser?._id, groupId, activeTab, historyIsError, historyError]);
 
   useEffect(() => {
     if (activeTab !== "chat") return;
@@ -409,7 +406,7 @@ const GroupRoomPage = () => {
                     <span>{chatError}</span>
                   </div>
                 </div>
-              ) : chatLoading ? (
+              ) : historyLoading ? (
                 <div className="p-6 flex justify-center">
                   <span className="loading loading-spinner loading-lg" />
                 </div>
