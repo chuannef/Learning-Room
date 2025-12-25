@@ -13,11 +13,11 @@ const FriendCard = ({ friend }) => {
               <img
                 className="rounded-full"
                 src={getUserAvatarSrc(friend)}
-                alt={friend.fullName}
+                alt={friend?.fullName || "User"}
               />
             </div>
           </div>
-          <h3 className="font-semibold truncate">{friend.fullName}</h3>
+          <h3 className="font-semibold truncate">{friend?.fullName || "User"}</h3>
         </div>
 
         <div className="flex flex-col gap-1.5 mb-3">
@@ -31,7 +31,7 @@ const FriendCard = ({ friend }) => {
           </span>
         </div>
 
-        <Link to={`/chat/${friend._id}`} className="btn btn-outline w-full">
+        <Link to={`/chat/${friend?._id || ""}`} className="btn btn-outline w-full" aria-disabled={!friend?._id}>
           Message
         </Link>
       </div>

@@ -43,7 +43,7 @@ const NotificationsPage = () => {
                 </h2>
 
                 <div className="space-y-3">
-                  {incomingRequests.map((request) => (
+                  {incomingRequests.filter(Boolean).map((request) => (
                     <div
                       key={request._id}
                       className="card bg-base-200 shadow-sm hover:shadow-md transition-shadow"
@@ -56,18 +56,18 @@ const NotificationsPage = () => {
                                 <img
                                   className="rounded-full"
                                   src={getUserAvatarSrc(request.sender)}
-                                  alt={request.sender.fullName}
+                                  alt={request.sender?.fullName || "User"}
                                 />
                               </div>
                             </div>
                             <div>
-                              <h3 className="font-semibold">{request.sender.fullName}</h3>
+                              <h3 className="font-semibold">{request.sender?.fullName || "User"}</h3>
                               <div className="flex flex-wrap gap-1.5 mt-1">
                                 <span className="badge badge-secondary badge-sm">
-                                  Native: {request.sender.nativeLanguage}
+                                  Native: {request.sender?.nativeLanguage || ""}
                                 </span>
                                 <span className="badge badge-outline badge-sm">
-                                  Learning: {request.sender.learningLanguage}
+                                  Learning: {request.sender?.learningLanguage || ""}
                                 </span>
                               </div>
                             </div>
@@ -97,7 +97,7 @@ const NotificationsPage = () => {
                 </h2>
 
                 <div className="space-y-3">
-                  {acceptedRequests.map((notification) => (
+                  {acceptedRequests.filter(Boolean).map((notification) => (
                     <div key={notification._id} className="card bg-base-200 shadow-sm">
                       <div className="card-body p-4">
                         <div className="flex items-start gap-3">
@@ -106,14 +106,14 @@ const NotificationsPage = () => {
                               <img
                                 className="rounded-full"
                                 src={getUserAvatarSrc(notification.recipient)}
-                                alt={notification.recipient.fullName}
+                                alt={notification.recipient?.fullName || "User"}
                               />
                             </div>
                           </div>
                           <div className="flex-1">
-                            <h3 className="font-semibold">{notification.recipient.fullName}</h3>
+                            <h3 className="font-semibold">{notification.recipient?.fullName || "User"}</h3>
                             <p className="text-sm my-1">
-                              {notification.recipient.fullName} accepted your friend request
+                              {(notification.recipient?.fullName || "Someone")} accepted your friend request
                             </p>
                             <p className="text-xs flex items-center opacity-70">
                               <ClockIcon className="h-3 w-3 mr-1" />

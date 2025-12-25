@@ -630,18 +630,18 @@ const GroupRoomPage = () => {
                 <h2 className="font-semibold text-lg">Members</h2>
 
                 <div className="space-y-2">
-                  {(group.members || []).map((m) => {
+                  {(group.members || []).filter(Boolean).map((m) => {
                     const isGroupAdmin = String(m?._id) === String(group.admin?._id);
                     return (
                       <div key={m._id} className="flex items-center justify-between gap-3 p-2 rounded bg-base-100">
                         <div className="flex items-center gap-3 min-w-0">
                           <div className="avatar">
                             <div className="w-10 rounded-full">
-                              <img src={getUserAvatarSrc(m)} alt={m.fullName || "User"} />
+                              <img src={getUserAvatarSrc(m)} alt={m?.fullName || "User"} />
                             </div>
                           </div>
                           <div className="min-w-0">
-                            <div className="font-medium truncate">{m.fullName || "User"}</div>
+                            <div className="font-medium truncate">{m?.fullName || "User"}</div>
                             {isGroupAdmin && <div className="text-xs opacity-70">Admin</div>}
                           </div>
                         </div>
@@ -680,16 +680,16 @@ const GroupRoomPage = () => {
                     <div className="opacity-70">No pending requests.</div>
                   ) : (
                     <div className="space-y-2">
-                      {joinRequests.map((u) => (
+                      {joinRequests.filter(Boolean).map((u) => (
                         <div key={u._id} className="flex items-center justify-between gap-3 p-2 rounded bg-base-100">
                           <div className="flex items-center gap-3 min-w-0">
                             <div className="avatar">
                               <div className="w-10 rounded-full">
-                                <img src={getUserAvatarSrc(u)} alt={u.fullName || "User"} />
+                                <img src={getUserAvatarSrc(u)} alt={u?.fullName || "User"} />
                               </div>
                             </div>
                             <div className="min-w-0">
-                              <div className="font-medium truncate">{u.fullName || "User"}</div>
+                              <div className="font-medium truncate">{u?.fullName || "User"}</div>
                             </div>
                           </div>
 

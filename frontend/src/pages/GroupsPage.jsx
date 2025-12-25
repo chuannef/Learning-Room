@@ -249,12 +249,12 @@ const GroupCard = ({
 
         {/* Member Avatars */}
         <div className="flex -space-x-2 mt-3">
-          {group.members.slice(0, 5).map((member) => (
+          {(group.members || []).filter(Boolean).slice(0, 5).map((member) => (
             <div key={member._id} className="avatar border-2 border-base-200 rounded-full">
               <div className="w-8 rounded-full">
                 <img 
                   src={getUserAvatarSrc(member)} 
-                  alt={member.fullName} 
+                  alt={member?.fullName || "User"} 
                 />
               </div>
             </div>
@@ -452,11 +452,11 @@ const CreateGroupModal = ({ onClose }) => {
                       <div className="w-8 rounded-full">
                         <img 
                           src={getUserAvatarSrc(friend)} 
-                          alt={friend.fullName} 
+                          alt={friend?.fullName || "User"} 
                         />
                       </div>
                     </div>
-                    <span className="font-medium">{friend.fullName}</span>
+                    <span className="font-medium">{friend?.fullName || "User"}</span>
                     {selectedMembers.includes(friend._id) && (
                       <CheckIcon className="size-4 text-primary ml-auto" />
                     )}

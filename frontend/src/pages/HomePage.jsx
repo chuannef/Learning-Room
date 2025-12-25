@@ -73,8 +73,8 @@ const HomePage = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {recommendedUsers.map((user) => {
-                const hasRequestBeenSent = outgoingRequestsIds.has(user._id);
+              {recommendedUsers.filter(Boolean).map((user) => {
+                const hasRequestBeenSent = outgoingRequestsIds.has(user?._id);
 
                 return (
                   <div
@@ -88,13 +88,13 @@ const HomePage = () => {
                             <img
                               className="rounded-full"
                               src={getUserAvatarSrc(user)}
-                              alt={user.fullName}
+                                alt={user?.fullName || "User"}
                             />
                           </div>
                         </div>
 
                         <div>
-                          <h3 className="font-semibold text-lg">{user.fullName}</h3>
+                          <h3 className="font-semibold text-lg">{user?.fullName || "User"}</h3>
                           {user.location && (
                             <div className="flex items-center text-xs opacity-70 mt-1">
                               <MapPinIcon className="size-3 mr-1" />
