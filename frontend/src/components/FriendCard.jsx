@@ -3,9 +3,12 @@ import { useQueryClient } from "@tanstack/react-query";
 import { LANGUAGE_TO_FLAG } from "../constants";
 import { getUserAvatarSrc } from "../lib/avatar";
 import { getDmMessages } from "../lib/api";
+import { usePresenceStore } from "../store/usePresenceStore";
 
 const FriendCard = ({ friend, onRemove, isRemoving = false }) => {
   const queryClient = useQueryClient();
+  const onlineUserIds = usePresenceStore((s) => s.onlineUserIds);
+  const isOnline = Boolean(friend?._id) && onlineUserIds?.has?.(String(friend._id));
 
   const prefetchDm = () => {
     const targetId = friend?._id;
@@ -32,7 +35,15 @@ const FriendCard = ({ friend, onRemove, isRemoving = false }) => {
               />
             </div>
           </div>
-          <h3 className="font-semibold truncate">{friend?.fullName || "User"}</h3>
+          <div className="min-w-0 flex-1">
+            <h3 className="font-semibold truncate">{friend?.fullName || "User"}</h3>
+            <p className={`text-xs flex items-center gap-1 ${isOnline ? "text-success" : "opacity-70"}`}>
+              <span
+                className={`size-2 rounded-full inline-block ${isOnline ? "bg-success" : "bg-base-content/40"}`}
+              />
+              {isOnline ? "Online" : "Offline"}
+            </p>
+          </div>
         </div>
 
         <div className="flex flex-col gap-1.5 mb-3">

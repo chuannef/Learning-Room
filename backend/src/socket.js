@@ -71,7 +71,57 @@ export function initSocket(httpServer, allowedOrigins = []) {
     }
   });
 
+  // Presence tracking: userId -> Set(socketId)
+  const userSockets = new Map();
+
+  function computeOnlineUserIds() {
+    return Array.from(userSockets.entries())
+      .filter(([, sockets]) => sockets && sockets.size > 0)
+      .map(([userId]) => String(userId));
+  }
+
+  function broadcastPresence() {
+    io.emit("presence:onlineUsers", { userIds: computeOnlineUserIds() });
+  }
+
   io.on("connection", (socket) => {
+    // Mark user as online
+    try {
+      const userId = String(socket.user?.id || "");
+      if (userId) {
+        const existing = userSockets.get(userId) || new Set();
+        existing.add(socket.id);
+        userSockets.set(userId, existing);
+        broadcastPresence();
+      }
+    } catch {
+      // ignore
+    }
+
+    // Send initial presence snapshot to the connecting client
+    socket.emit("presence:onlineUsers", { userIds: computeOnlineUserIds() });
+
+    socket.on("disconnect", () => {
+      try {
+        const userId = String(socket.user?.id || "");
+        if (!userId) return;
+
+        const sockets = userSockets.get(userId);
+        if (!sockets) return;
+
+        sockets.delete(socket.id);
+        if (sockets.size === 0) {
+          userSockets.delete(userId);
+        } else {
+          userSockets.set(userId, sockets);
+        }
+
+        broadcastPresence();
+      } catch {
+        // ignore
+      }
+    });
+
     socket.on("dm:join", async ({ otherUserId } = {}, ack) => {
       try {
         const myId = socket.user.id;

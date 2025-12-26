@@ -2,9 +2,11 @@ import { Link, useLocation } from "react-router";
 import useAuthUser from "../hooks/useAuthUser";
 import { BellIcon, HomeIcon, ShipWheelIcon, UsersIcon, Users2Icon } from "lucide-react";
 import { getUserAvatarSrc } from "../lib/avatar";
+import { usePresenceStore } from "../store/usePresenceStore";
 
 const Sidebar = () => {
   const { authUser } = useAuthUser();
+  const isConnected = usePresenceStore((s) => s.isConnected);
   const location = useLocation();
   const currentPath = location.pathname;
 
@@ -74,10 +76,17 @@ const Sidebar = () => {
           </div>
           <div className="flex-1">
             <p className="font-semibold text-sm">{authUser?.fullName}</p>
-            <p className="text-xs text-success flex items-center gap-1">
-              <span className="size-2 rounded-full bg-success inline-block" />
-              Online
-            </p>
+            {isConnected ? (
+              <p className="text-xs text-success flex items-center gap-1">
+                <span className="size-2 rounded-full bg-success inline-block" />
+                Online
+              </p>
+            ) : (
+              <p className="text-xs opacity-70 flex items-center gap-1">
+                <span className="size-2 rounded-full bg-base-content/40 inline-block" />
+                Offline
+              </p>
+            )}
           </div>
         </Link>
       </div>

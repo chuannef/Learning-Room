@@ -10,6 +10,7 @@ import CallButton from "../components/CallButton";
 import { getUserAvatarSrc } from "../lib/avatar";
 import { getSocket } from "../lib/socket";
 import { ImageIcon, TrashIcon, PencilIcon, CheckIcon, XIcon } from "lucide-react";
+import { usePresenceStore } from "../store/usePresenceStore";
 
 function dmRoomId(userIdA, userIdB) {
   const [a, b] = [userIdA, userIdB].map(String).sort();
@@ -30,6 +31,12 @@ const ChatPage = () => {
   const fileInputRef = useRef(null);
 
   const { authUser } = useAuthUser();
+  const onlineUserIds = usePresenceStore((s) => s.onlineUserIds);
+
+  const friendIsOnline = useMemo(() => {
+    if (!targetUserId) return false;
+    return onlineUserIds?.has?.(String(targetUserId)) || false;
+  }, [onlineUserIds, targetUserId]);
 
   const { data: friends = [] } = useQuery({
     queryKey: ["friends"],
@@ -283,7 +290,12 @@ const ChatPage = () => {
             </div>
 
             <div className="min-w-0">
-              <div className="font-semibold truncate">{friend?.fullName || "Chat"}</div>
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="font-semibold truncate">{friend?.fullName || "Chat"}</div>
+                <span className={`badge badge-sm ${friendIsOnline ? "badge-success" : "badge-ghost"}`}>
+                  {friendIsOnline ? "Online" : "Offline"}
+                </span>
+              </div>
             </div>
           </div>
 
