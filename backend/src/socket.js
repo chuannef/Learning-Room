@@ -1,11 +1,34 @@
 import { Server } from "socket.io";
 import cookie from "cookie";
 import jwt from "jsonwebtoken";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 
 import Group from "./models/Group.js";
 import Message from "./models/Message.js";
 import User from "./models/User.js";
 import mongoose from "mongoose";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+function tryDeleteChatUpload(attachment) {
+  try {
+    const p = typeof attachment?.path === "string" ? attachment.path : "";
+    if (!p.startsWith("/uploads/chat/")) return;
+
+    const fileName = path.basename(p);
+    if (!fileName || fileName.includes("..")) return;
+
+    const absolute = path.join(__dirname, "uploads", "chat", fileName);
+    if (fs.existsSync(absolute)) {
+      fs.unlinkSync(absolute);
+    }
+  } catch {
+    // ignore
+  }
+}
 
 function dmRoomId(userIdA, userIdB) {
   const [a, b] = [userIdA, userIdB].map(String).sort();
@@ -308,7 +331,7 @@ export function initSocket(httpServer, allowedOrigins = []) {
           return typeof ack === "function" ? ack({ ok: false, message: "Invalid message id" }) : undefined;
         }
 
-        const message = await Message.findById(messageId).select("kind roomId sender group").lean();
+        const message = await Message.findById(messageId).select("kind roomId sender group attachment").lean();
         if (!message) {
           return typeof ack === "function" ? ack({ ok: false, message: "Message not found" }) : undefined;
         }
@@ -329,6 +352,9 @@ export function initSocket(httpServer, allowedOrigins = []) {
             return typeof ack === "function" ? ack({ ok: false, message: "Not allowed" }) : undefined;
           }
         }
+
+        // Delete attachment file (if any) before removing the DB row.
+        tryDeleteChatUpload(message.attachment);
 
         await Message.deleteOne({ _id: messageId });
 

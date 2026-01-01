@@ -4,6 +4,7 @@ import { Navigate, Route, Routes } from "react-router";
 const HomePage = lazy(() => import("./pages/HomePage.jsx"));
 const SignUpPage = lazy(() => import("./pages/SignUpPage.jsx"));
 const LoginPage = lazy(() => import("./pages/LoginPage.jsx"));
+const AboutPage = lazy(() => import("./pages/AboutPage.jsx"));
 const NotificationsPage = lazy(() => import("./pages/NotificationsPage.jsx"));
 const CallPage = lazy(() => import("./pages/CallPage.jsx"));
 const ChatPage = lazy(() => import("./pages/ChatPage.jsx"));
@@ -57,6 +58,9 @@ const App = () => {
               !isAuthenticated ? <LoginPage /> : <Navigate to={isOnboarded ? "/" : "/onboarding"} />
             }
           />
+
+          <Route path="/about" element={<AboutPage />} />
+
           <Route
             path="/notifications"
             element={
